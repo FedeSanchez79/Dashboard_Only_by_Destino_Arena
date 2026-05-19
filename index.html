@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Hector Couto · Only by Destino Arena</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --bg2: #111111;
+    --bg3: #1a1a1a;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0f0f0;
+    --text2: #888;
+    --text3: #555;
+    --accent: #c8f135;
+    --accent2: #8fbb1e;
+    --accent-dim: rgba(200,241,53,0.08);
+    --red: #ff4d4d;
+    --blue: #4d9fff;
+    --amber: #ffb84d;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: rgba(10,10,10,0.95);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--accent); }
+    50% { opacity: 0.5; box-shadow: 0 0 4px var(--accent); }
+  }
+  .header-title { font-size: 15px; font-weight: 500; letter-spacing: -0.2px; }
+  .header-sub { font-size: 12px; color: var(--text2); margin-top: 1px; }
+  .live-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(200,241,53,0.2);
+    color: var(--accent);
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    padding: 5px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.5s infinite;
+  }
+  .last-update {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Layout */
+  main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* Loading / error */
+  #loading {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    height: 60vh; gap: 16px;
+    color: var(--text2);
+  }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #error-msg {
+    display: none;
+    background: rgba(255,77,77,0.08);
+    border: 1px solid rgba(255,77,77,0.2);
+    color: var(--red);
+    padding: 16px 20px;
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    margin-bottom: 24px;
+  }
+  #dashboard { display: none; }
+
+  /* KPI grid */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .kpi {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+  .kpi:hover { border-color: var(--border2); }
+  .kpi.accent { border-color: rgba(200,241,53,0.2); background: var(--accent-dim); }
+  .kpi-label {
+    font-size: 11px;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 10px;
+  }
+  .kpi-value {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -1px;
+    color: var(--text);
+    line-height: 1;
+  }
+  .kpi.accent .kpi-value { color: var(--accent); }
+  .kpi-sub {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 6px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Charts grid */
+  .charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .chart-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .chart-card.wide { grid-column: span 2; }
+  .chart-card.full { grid-column: 1 / -1; }
+  .card-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text2);
+    margin-bottom: 16px;
+  }
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* Legend */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    margin-bottom: 12px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px; color: var(--text2);
+  }
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 2px; flex-shrink: 0;
+  }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text3);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    font-weight: 400;
+  }
+  tbody td {
+    padding: 12px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13px;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .total-row td {
+    font-weight: 600;
+    color: var(--accent);
+    border-top: 1px solid var(--border2);
+    border-bottom: none;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.3px;
+  }
+  .badge-green { background: rgba(200,241,53,0.1); color: var(--accent); border: 1px solid rgba(200,241,53,0.2); }
+  .badge-red { background: rgba(255,77,77,0.1); color: var(--red); border: 1px solid rgba(255,77,77,0.2); }
+  .badge-blue { background: rgba(77,159,255,0.1); color: var(--blue); border: 1px solid rgba(77,159,255,0.2); }
+  .badge-amber { background: rgba(255,184,77,0.1); color: var(--amber); border: 1px solid rgba(255,184,77,0.2); }
+
+  /* Progress bar */
+  .progress-wrap { margin-top: 6px; }
+  .progress-bar-bg {
+    background: var(--bg3);
+    border-radius: 4px;
+    height: 4px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%; border-radius: 4px;
+    background: var(--accent);
+    transition: width 0.8s ease;
+  }
+  .progress-label {
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: var(--text3);
+    margin-bottom: 4px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text3);
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  @media (max-width: 900px) {
+    main { padding: 16px; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-row { grid-template-columns: 1fr; }
+    .chart-card.wide, .chart-card.full { grid-column: span 1; }
+    header { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo-dot"></div>
+    <div>
+      <div class="header-title">Hector Couto — Only by Destino Arena</div>
+      <div class="header-sub">Dashboard de ventas en tiempo real</div>
+    </div>
+  </div>
+  <div style="display:flex; align-items:center; gap:16px;">
+    <span class="last-update" id="last-update">—</span>
+    <span class="live-badge"><span class="live-dot"></span>EN VIVO</span>
+  </div>
+</header>
+
+<main>
+  <div id="loading">
+    <div class="spinner"></div>
+    <span>Conectando con Google Sheets...</span>
+  </div>
+  <div id="error-msg"></div>
+  <div id="dashboard">
+
+    <div class="kpi-grid" id="kpi-grid"></div>
+
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="card-title">Tickets vendidos por tipo</div>
+        <div class="legend" id="legend-dona"></div>
+        <div class="chart-wrap" style="height:200px;">
+          <canvas id="chartDona" role="img" aria-label="Distribución de tickets por tipo"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="card-title">Recaudación por tipo ($)</div>
+        <div class="chart-wrap" style="height:232px;">
+          <canvas id="chartBarras" role="img" aria-label="Recaudación por tipo de ticket"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="card-title">Ocupación por tipo</div>
+        <div id="progress-section"></div>
+      </div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:12px;">
+      <div class="card-title">Progresión de ventas por fecha</div>
+      <div class="chart-wrap" style="height:220px;">
+        <canvas id="chartLinea" role="img" aria-label="Progresión de tickets vendidos por fecha"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:12px;">
+      <div class="card-title">Detalle por tipo de ticket</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Precio unitario</th>
+              <th>Vendidos</th>
+              <th>Cap. máx.</th>
+              <th>Recaudación</th>
+              <th>% del total</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="card-title">Últimas transacciones</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Comprador</th>
+              <th>Detalle</th>
+              <th>Total</th>
+              <th>Fecha y hora</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-recientes"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <span>Destino Arena · Sistema de ventas</span>
+  <span id="footer-count">—</span>
+</footer>
+
+<script>
+const API_KEY = 'AIzaSyAuJlNbip2fWReTMHqhOcuuJcN2V32YsA0';
+const SHEET_ID = '1Ln-Ie-JmfV-Saq1tvjB0mlAjdjfcVXUGSnJOIPh5FOE';
+const REFRESH_MS = 60000;
+
+const COLORS = ['#c8f135','#4d9fff','#ffb84d','#ff4d4d','#b44dff','#4dffd4','#ff8c4d','#4dffb4'];
+
+const TICKET_PRICES = {
+  0: 'Acceso S/Cargo',
+  15000: 'Early Pass',
+  20000: 'Early Bird General',
+  25000: 'General Tanda 1',
+  30000: 'General Tanda 2',
+  35000: 'General Tanda 3',
+  40000: 'VIP Front - Tanda 1',
+  60000: 'Backstage - Tanda 1'
+};
+
+const TICKET_MAX = {
+  'Acceso S/Cargo': 50,
+  'Early Pass': 500,
+  'Early Bird General': 6,
+  'General Tanda 1': 500,
+  'General Tanda 2': 500,
+  'General Tanda 3': 500,
+  'VIP Front - Tanda 1': 500,
+  'Backstage - Tanda 1': 500
+};
+
+let chartDona, chartBarras, chartLinea, chartHora;
+
+async function fetchSheet(range) {
+  const parts = range.split('!');
+  const sheetName = encodeURIComponent(parts[0]);
+  const cellRange = parts[1] || '';
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheetName}!${cellRange}?key=${API_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
+  const data = await res.json();
+  return data.values || [];
+}
+
+function fmt(n) {
+  return '$' + Math.round(n).toLocaleString('es-AR');
+}
+
+function parseDate(raw) {
+  if (!raw) return null;
+  if (raw instanceof Date) return raw;
+  const s = String(raw).trim();
+  const num = parseFloat(s);
+  if (!isNaN(num) && num > 40000) {
+    const d = new Date((num - 25569) * 86400 * 1000);
+    return d;
+  }
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+function buildDashboard(ventas, diarias, tipos, totales) {
+  // Build tipoMap from Dataset Tipos De Tickets
+  // Sheet range B4:F13 → row = [nombre, valor, cantMax, vendidos, recaudado]
+  const tipoMaxMap = {};
+  const parsePesos = v => parseFloat(String(v || '0').replace(/[$\.]/g, '').replace(',', '.')) || 0;
+  tipos.forEach(t => {
+    const nombre = String(t[0] || '').trim().toUpperCase();
+    const max = parsePesos(t[2]);
+    if (!nombre || nombre === 'TOTAL') return;
+    tipoMaxMap[nombre] = max || 999;
+  });
+
+  const COL_TIPOS = [
+    { col: 3, nombre: 'Backstage - Tanda 1', key: 'BACKSTAGE - TANDA 1', precio: 60000 },
+    { col: 4, nombre: 'VIP Front - Tanda 1', key: 'VIP FRONT - TANDA 1', precio: 40000 },
+    { col: 5, nombre: 'Early Pass', key: 'EARLY PASS (HASTA 01:00 HS)', precio: 15000 },
+    { col: 6, nombre: 'Early Bird General', key: 'EARLY BIRD GENERAL', precio: 20000 },
+    { col: 7, nombre: 'General Tanda 1', key: 'GENERAL TANDA 1', precio: 25000 },
+    { col: 8, nombre: 'General Tanda 2', key: 'GENERAL TANDA 2', precio: 30000 },
+    { col: 9, nombre: 'General Tanda 3', key: 'GENERAL TANDA 3', precio: 35000 },
+  ];
+
+  const tipoMap = {};
+  COL_TIPOS.forEach(ct => {
+    tipoMap[ct.nombre] = {
+      nombre: ct.nombre,
+      precio: ct.precio,
+      max: tipoMaxMap[ct.key] || tipoMaxMap[ct.key.trimEnd()] || 999,
+      vendidos: 0,
+      recaudacion: 0
+    };
+  });
+
+  // Sum B4:B59 for totalTix and C4:C59 for totalRec from Ventas Diarias
+  let totalTix = 0, totalRec = 0;
+  totales.forEach(row => {
+    totalTix += parseFloat(row[0]) || 0;
+    totalRec += parsePesos(row[1]);
+  });
+
+  // Build per-type counts from diarias
+  diarias.forEach(row => {
+    const totalDia = parseFloat(row[1]) || 0;
+    if (totalDia === 0) return;
+    COL_TIPOS.forEach(ct => {
+      const qty = parseFloat(row[ct.col]) || 0;
+      if (qty === 0) return;
+      tipoMap[ct.nombre].vendidos += qty;
+      tipoMap[ct.nombre].recaudacion += qty * ct.precio;
+    });
+  });
+
+  // Count transactions from Dataset Registro Ventas
+  let totalTrans = 0;
+  const ventasData = [];
+  ventas.forEach(row => {
+    const comprador = row[0];
+    const total = parseFloat(row[5]);
+    const detalle = row[4] || '';
+    const fechaRaw = row[6];
+    if (!comprador || isNaN(total) || total <= 0) return;
+    const qty = parseInt(detalle.match(/^(\d+)/)?.[1] || '1');
+    const precioUnit = Math.round(total / qty);
+    const tipo = TICKET_PRICES[precioUnit] || `$${precioUnit.toLocaleString()}`;
+    const fecha = parseDate(fechaRaw);
+    totalTrans++;
+    ventasData.push({ comprador, detalle, total, fecha, qty, tipo });
+  });
+
+  ventasData.sort((a, b) => (b.fecha || 0) - (a.fecha || 0));
+  const ticketPromedio = totalTix > 0 ? totalRec / totalTix : 0;
+
+  const masVendido = Object.values(tipoMap).filter(t => t.vendidos > 0).sort((a, b) => b.vendidos - a.vendidos)[0];
+
+  // KPIs
+  const kpiGrid = document.getElementById('kpi-grid');
+  kpiGrid.innerHTML = `
+    <div class="kpi accent">
+      <div class="kpi-label">Recaudación total</div>
+      <div class="kpi-value">${fmt(totalRec)}</div>
+      <div class="kpi-sub">acumulado</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Tickets vendidos</div>
+      <div class="kpi-value">${totalTix}</div>
+      <div class="kpi-sub">unidades</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Transacciones</div>
+      <div class="kpi-value">${totalTrans}</div>
+      <div class="kpi-sub">órdenes</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Precio promedio</div>
+      <div class="kpi-value">${fmt(ticketPromedio)}</div>
+      <div class="kpi-sub">por ticket</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Más vendido</div>
+      <div class="kpi-value" style="font-size:16px; padding-top:4px;">${masVendido?.nombre || '—'}</div>
+      <div class="kpi-sub">${masVendido?.vendidos || 0} tickets</div>
+    </div>
+  `;
+
+  // Datos para gráficos
+  const tiposArr = Object.values(tipoMap).filter(t => t.vendidos > 0).sort((a, b) => b.vendidos - a.vendidos);
+  const labels = tiposArr.map(t => t.nombre);
+  const cantidades = tiposArr.map(t => t.vendidos);
+  const recaudaciones = tiposArr.map(t => t.recaudacion);
+  const colores = tiposArr.map((_, i) => COLORS[i % COLORS.length]);
+
+  // Leyenda dona
+  document.getElementById('legend-dona').innerHTML = tiposArr.map((t, i) =>
+    `<span class="legend-item"><span class="legend-dot" style="background:${colores[i]}"></span>${t.nombre} (${t.vendidos})</span>`
+  ).join('');
+
+  // Chart dona
+  if (chartDona) chartDona.destroy();
+  chartDona = new Chart(document.getElementById('chartDona'), {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data: cantidades, backgroundColor: colores, borderWidth: 2, borderColor: '#111' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} tickets` } }
+      }
+    }
+  });
+
+  // Chart barras
+  if (chartBarras) chartBarras.destroy();
+  const shortLabels = labels.map(l => l.length > 12 ? l.substring(0, 11) + '…' : l);
+  chartBarras = new Chart(document.getElementById('chartBarras'), {
+    type: 'bar',
+    data: {
+      labels: shortLabels,
+      datasets: [{ data: recaudaciones, backgroundColor: colores, borderRadius: 4, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.raw)}` } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#555', font: { size: 10 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#555', font: { size: 10 }, callback: v => '$' + (v / 1000) + 'k' } }
+      }
+    }
+  });
+
+  // Progress bars ocupación
+  const progSection = document.getElementById('progress-section');
+  progSection.innerHTML = Object.values(tipoMap).filter(t => t.vendidos > 0).map(t => {
+    const pct = Math.min(100, Math.round((t.vendidos / t.max) * 100));
+    return `
+      <div style="margin-bottom:14px;">
+        <div class="progress-label">
+          <span>${t.nombre}</span>
+          <span>${t.vendidos}/${t.max}</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" style="width:${pct}%; background:${pct >= 90 ? '#ff4d4d' : pct >= 60 ? '#ffb84d' : '#c8f135'}"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Chart línea acumulada
+  // Chart progresion diaria desde Ventas Diarias
+  // diarias: col A=fecha, B=total tickets dia, D=Backstage, E=VIP, F=EarlyPass, G=EarlyBird, H=General1, I=General2, J=General3
+  const dailyLabels = [];
+  const dailyCumulative = [];
+  const dailyPerDay = [];
+  let cumTickets = 0;
+
+  diarias.forEach(row => {
+    const fechaRaw = row[0];
+    const totalDia = parseFloat(row[1]) || 0;
+    if (!fechaRaw || totalDia === 0) return;
+
+    // Parse date - can be serial number or date string
+    let fechaStr = '';
+    const num = parseFloat(fechaRaw);
+    if (!isNaN(num) && num > 40000) {
+      const d = new Date((num - 25569) * 86400 * 1000);
+      fechaStr = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+    } else {
+      const d = new Date(fechaRaw);
+      if (!isNaN(d)) fechaStr = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+      else fechaStr = String(fechaRaw).substring(0, 10);
+    }
+
+    cumTickets += totalDia;
+    dailyLabels.push(fechaStr);
+    dailyPerDay.push(totalDia);
+    dailyCumulative.push(cumTickets);
+  });
+
+  if (chartLinea) chartLinea.destroy();
+  chartLinea = new Chart(document.getElementById('chartLinea'), {
+    type: 'bar',
+    data: {
+      labels: dailyLabels,
+      datasets: [{
+        label: 'Tickets vendidos',
+        data: dailyPerDay,
+        backgroundColor: '#c8f135',
+        borderRadius: 4,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.raw} tickets` } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#555', font: { size: 11 }, maxRotation: 45, autoSkip: false }, offset: true },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#555', font: { size: 11 } }, min: 0, max: 500 }
+      }
+    }
+  });
+
+  // Tabla detalle
+  const tablaBody = document.getElementById('tabla-body');
+  tablaBody.innerHTML = tiposArr.map((t, i) => {
+    const pct = Math.round((t.recaudacion / totalRec) * 100);
+    const agotado = t.vendidos >= t.max;
+    const badge = agotado
+      ? '<span class="badge badge-red">Agotado</span>'
+      : t.precio === 0
+        ? '<span class="badge badge-blue">Gratuito</span>'
+        : '<span class="badge badge-green">Activo</span>';
+    return `<tr>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${colores[i]};margin-right:8px;"></span>${t.nombre}</td>
+      <td style="font-family:'DM Mono',monospace;">${t.precio === 0 ? 'Gratis' : fmt(t.precio)}</td>
+      <td style="font-family:'DM Mono',monospace;">${t.vendidos}</td>
+      <td style="font-family:'DM Mono',monospace; color:#555;">${t.max}</td>
+      <td style="font-family:'DM Mono',monospace;">${fmt(t.recaudacion)}</td>
+      <td style="font-family:'DM Mono',monospace; color:#888;">${pct}%</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('') + `
+    <tr class="total-row">
+      <td>Total</td>
+      <td>—</td>
+      <td>${totalTix}</td>
+      <td>—</td>
+      <td>${fmt(totalRec)}</td>
+      <td>100%</td>
+      <td>—</td>
+    </tr>`;
+
+  // Tabla recientes
+  const tablaRec = document.getElementById('tabla-recientes');
+  tablaRec.innerHTML = ventasData.slice(0, 10).map(v => {
+    const fechaStr = v.fecha
+      ? v.fecha.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }) + ' ' +
+        v.fecha.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' })
+      : '—';
+    const detalleCorto = v.detalle?.replace('// Only by Destino Arena','').trim() || '—';
+    return `<tr>
+      <td>${v.comprador}</td>
+      <td style="color:#888; font-size:12px;">${detalleCorto}</td>
+      <td style="font-family:'DM Mono',monospace; color:var(--accent);">${fmt(v.total)}</td>
+      <td style="font-family:'DM Mono',monospace; color:#555; font-size:12px;">${fechaStr}</td>
+    </tr>`;
+  }).join('');
+
+  // Footer
+  document.getElementById('footer-count').textContent = `${totalTrans} transacciones · ${totalTix} tickets · ${fmt(totalRec)}`;
+
+  // Timestamp
+  const now = new Date();
+  document.getElementById('last-update').textContent =
+    'Actualizado ' + now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+async function loadData() {
+  try {
+    const [ventas, diarias, tipos, totales] = await Promise.all([
+      fetchSheet("Dataset Registro Ventas!A2:H"),
+      fetchSheet("Ventas Diarias!A4:N59"),
+      fetchSheet("Dataset Tipos De Tickets!B4:F59"),
+      fetchSheet("Ventas Diarias!B4:C59")
+    ]);
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    buildDashboard(ventas, diarias, tipos, totales);
+  } catch (err) {
+    document.getElementById('loading').style.display = 'none';
+    const errEl = document.getElementById('error-msg');
+    errEl.style.display = 'block';
+    errEl.textContent = `Error al cargar datos: ${err.message}. Verificá que la API key sea válida y que el Sheets sea accesible.`;
+    console.error(err);
+  }
+}
+
+loadData();
+setInterval(loadData, REFRESH_MS);
+</script>
+</body>
+</html>
